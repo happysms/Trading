@@ -1,3 +1,7 @@
+<<<<<<< HEAD
 hello world
 bye
 real
+=======
+minsung hi
+>>>>>>> develope
