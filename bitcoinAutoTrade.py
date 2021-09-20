@@ -1,13 +1,10 @@
+# -*- coding: utf-8 -*-
 import time
 import pyupbit
 import datetime
 import requests
 from slacker import Slacker
 
-slack = Slacker('')
-
-access = ""
-secret = ""
 
 def get_target_price(ticker, k):
     """변동성 돌파 전략으로 매수 목표가 조회"""
