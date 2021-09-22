@@ -9,5 +9,5 @@ RUN adduser --disabled-password --gecos "" ubuntu && echo 'ubuntu:ubuntu' | \
 USER ubuntu
 WORKDIR /home/ubuntu
 
-COPY ./eth_trading_bot.py /home/ubuntu/eth_trading_bot.py
-COPY ./logger.py /home/ubuntu/logger.py
+COPY eth_trading_bot.py /home/ubuntu/eth_trading_bot.py
+COPY logger.py /home/ubuntu/logger.py
