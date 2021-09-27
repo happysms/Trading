@@ -4,7 +4,6 @@ from pytz import timezone
 import time
 import pyupbit
 import datetime
-from slacker import Slacker
 import argparse
 import logger
 
@@ -48,17 +47,15 @@ if __name__ == "__main__":
     token = args.token
 
     KST = timezone('Asia/Seoul')
-    slack = Slacker(token)
     upbit = pyupbit.Upbit(access, secret)
     mylogger = logger.make_logger("main")
 
     mylogger.info("ETH Trading Start")
-    slack.chat.post_message('#stock', "ETH Trading Start")
 
     while True:
         try:
             now = (KST.localize(datetime.datetime.now()))
-            start_time = KST.localize(datetime.datetime(now.year, now.month, now.day, 9, 0, 0))
+            start_time = KST.localize(datetime.datetime(now.year, now.month, now.day, 9, 1, 0))
 
             if now.hour < 9:
                 start_time = start_time - timedelta(days=1)
@@ -73,19 +70,16 @@ if __name__ == "__main__":
                     krw = upbit.get_balance("KRW")
 
                     if krw > 5006:  # 최소 주문 금액
-                        buy_result = upbit.buy_market_order("KRW-ETH", 10000)
+                        buy_result = upbit.buy_market_order("KRW-ETH", krw * 0.9995)
                         mylogger.info(f"{krw}원 매수 주문 ")
-                        slack.chat.post_message('#stock', f"{krw}원 매수 주문")
 
             else:  # 파는 시간
                 eth = get_balance("ETH")
                 sell_result = upbit.sell_market_order("KRW-ETH", eth)
                 mylogger.info(f"ETH {eth}개 매도 주문 ")
-                slack.chat.post_message('#stock', f"ETH {eth}개 매도 주문")
 
             time.sleep(0.5)
 
         except Exception as e:
             mylogger.info(e)
-            slack.chat.post_message('#stock', e)
             time.sleep(0.5)
