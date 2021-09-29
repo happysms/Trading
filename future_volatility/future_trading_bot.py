@@ -59,7 +59,7 @@ while True:
     # 현재가, 구매 가능 수량
     btc = binance.fetch_ticker(symbol=symbol)
     cur_price = btc['last']
-    amount = util.cal_amount(usdt, cur_price, 0.5)
+    amount = util.cal_amount(usdt, cur_price, 0.95)
 
     if op_mode and position['type'] is None:
         util.enter_position(binance, symbol, cur_price, long_target, short_target, amount, position)
