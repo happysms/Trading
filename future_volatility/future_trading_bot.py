@@ -2,6 +2,8 @@
 import ccxt
 import time
 import datetime
+
+import logger
 import util
 import argparse
 
@@ -14,6 +16,7 @@ parser.add_argument('--secret', metavar='secret', required=True,
 args = parser.parse_args()
 api_key = args.api_key
 secret = args.secret
+logger = logger.make_logger("mylogger")
 
 # binance 객체 생성
 binance = ccxt.binance(config={
@@ -49,32 +52,38 @@ if short_target <= cur_price <= long_target:
     op_mode = True
 
 while True:
-    now = datetime.datetime.now()
+    try:
+        now = datetime.datetime.now()
 
-    # position 종료
-    if now.hour == 8 and now.minute == 50 and (20 <= now.second < 30):
-        if op_mode and position['type'] is not None:
-            util.exit_position(binance, symbol, position)
-            op_mode = False
-            position['type'] = None
+        # position 종료
+        if now.hour == 8 and now.minute == 50 and (20 <= now.second < 30):
+            if op_mode and position['type'] is not None:
+                util.exit_position(binance, symbol, position)
+                op_mode = False
+                position['type'] = None
 
-    # 목표가 갱신
-    if now.hour == 9 and now.minute == 0 and (20 <= now.second < 30):
-        long_target, short_target, ma20_condition, before_day_condition = util.cal_target(binance, symbol)
+        # 목표가 갱신
+        if now.hour == 9 and now.minute == 0 and (20 <= now.second < 30):
+            long_target, short_target, ma20_condition, before_day_condition = util.cal_target(binance, symbol)
 
-        balance = binance.fetch_balance()
-        usdt = balance['total']['USDT']
-        op_mode = True
-        time.sleep(10)
+            balance = binance.fetch_balance()
+            usdt = balance['total']['USDT']
+            op_mode = True
+            time.sleep(10)
 
-    # 현재가, 구매 가능 수량
-    eth = binance.fetch_ticker(symbol=symbol)
-    cur_price = eth['last']
-    amount = util.cal_amount(usdt, cur_price, 0.95)
+        # 현재가, 구매 가능 수량
+        eth = binance.fetch_ticker(symbol=symbol)
+        cur_price = eth['last']
+        amount = util.cal_amount(usdt, cur_price, 0.95)
 
-    if op_mode and position['type'] is None:
-        position['type'], invest_amount = util.enter_position(binance, symbol, cur_price, long_target, short_target, amount, position, ma20_condition, before_day_condition)
-        if position['type']:
-            print(f"{position['type']}포지션 진입, 투자금 {invest_amount}")
+        if op_mode and position['type'] is None:
+            position['type'], invest_amount = util.enter_position(binance, symbol, cur_price, long_target, short_target, amount, position, ma20_condition, before_day_condition)
+            if position['type']:
+                print(f"{position['type']}포지션 진입, 투자금 {invest_amount}")
 
-    time.sleep(1)
+        time.sleep(1)
+
+    except Exception as e:
+        logger.error(e)
+
+
