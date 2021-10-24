@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 import ccxt
 import time
 import datetime
-
 import logger
 import util
 import argparse
@@ -28,7 +26,6 @@ binance = ccxt.binance(config={
     }
 })
 
-
 symbol = "ETH/USDT"
 long_target, short_target, ma20_condition, before_day_condition = util.cal_target(binance, symbol)
 
@@ -43,12 +40,13 @@ position = {
     "type": None,
     "amount": 0
 }
+
 op_mode = False
 
-print("long 목표가: ", long_target, "\nshort 목표가: ", short_target)
+logger.info("long 목표가: ", long_target, "\nshort 목표가: ", short_target)
 
 if short_target <= cur_price <= long_target:
-    print("프로그램 실행 시점에서 거래 가능 구간")
+    logger.info("프로그램 실행 시점에서 거래 가능 구간")
     op_mode = True
 
 while True:
@@ -74,16 +72,17 @@ while True:
         # 현재가, 구매 가능 수량
         eth = binance.fetch_ticker(symbol=symbol)
         cur_price = eth['last']
-        amount = util.cal_amount(usdt, cur_price, 0.95)
+        amount = util.cal_amount(usdt, cur_price, 0.99)
 
         if op_mode and position['type'] is None:
             position['type'], invest_amount = util.enter_position(binance, symbol, cur_price, long_target, short_target, amount, position, ma20_condition, before_day_condition)
             if position['type']:
-                print(f"{position['type']}포지션 진입, 투자금 {invest_amount}")
+                logger.info(f"{position['type']}포지션 진입, 투자금 {invest_amount}")
 
         time.sleep(1)
 
     except Exception as e:
         logger.error(e)
+
 
 
