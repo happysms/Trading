@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import ccxt
 import time
 import datetime
@@ -28,6 +29,11 @@ binance = ccxt.binance(config={
 
 symbol = "ETH/USDT"
 long_target, short_target, ma20_condition, before_day_condition = util.cal_target(binance, symbol)
+op_mode = False
+position = {
+    "type": None,
+    "amount": 0
+}
 
 # 잔고 조회
 balance = binance.fetch_balance()
@@ -36,14 +42,7 @@ usdt = balance['total']['USDT']
 eth = binance.fetch_ticker(symbol=symbol)
 cur_price = eth['last']
 
-position = {
-    "type": None,
-    "amount": 0
-}
-
-op_mode = False
-
-logger.info("long 목표가: ", long_target, "\nshort 목표가: ", short_target)
+logger.info(("long 목표가: ", long_target, "\nshort 목표가: ", short_target))
 
 if short_target <= cur_price <= long_target:
     logger.info("프로그램 실행 시점에서 거래 가능 구간")
@@ -56,9 +55,11 @@ while True:
         # position 종료
         if now.hour == 8 and now.minute == 50 and (20 <= now.second < 30):
             if op_mode and position['type'] is not None:
-                util.exit_position(binance, symbol, position)
+                order_id = util.exit_position(binance, symbol, position)
                 op_mode = False
                 position['type'] = None
+                time.sleep(10)
+                util.add_record_log(order_id, binance, symbol)
 
         # 목표가 갱신
         if now.hour == 9 and now.minute == 0 and (20 <= now.second < 30):
@@ -75,14 +76,18 @@ while True:
         amount = util.cal_amount(usdt, cur_price, 0.99)
 
         if op_mode and position['type'] is None:
-            position['type'], invest_amount = util.enter_position(binance, symbol, cur_price, long_target, short_target, amount, position, ma20_condition, before_day_condition)
+            position['type'], invest_amount, order_id = util.enter_position(binance, symbol, cur_price, long_target, short_target, amount, position, ma20_condition, before_day_condition)
             if position['type']:
                 logger.info(f"{position['type']}포지션 진입, 투자금 {invest_amount}")
+                time.sleep(10)
+                util.add_record_log(order_id, binance, symbol)
 
         time.sleep(1)
+        logger.info(("long 목표가: ", long_target, "\nshort 목표가: ", short_target))
 
     except Exception as e:
         logger.error(e)
+
 
 
 

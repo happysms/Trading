@@ -1,5 +1,7 @@
 import math
 import pandas as pd
+from datetime import datetime
+from db import MariaDB
 
 
 def cal_target(exchange, symbol):
@@ -40,20 +42,54 @@ def cal_amount(usdt_balance, cur_price, portion):
 
 
 def enter_position(exchange, symbol, cur_price, long_target, short_target, amount, position, ma20_condition, before_day_condition):
+    order = None
+
     if cur_price > long_target and ma20_condition and before_day_condition:
         position['type'] = 'long'
         position['amount'] = amount
-        exchange.create_market_buy_order(symbol=symbol, amount=amount)
+        order = exchange.create_market_buy_order(symbol=symbol, amount=amount)
     elif cur_price < short_target and not ma20_condition:
         position['type'] = 'short'
         position['amount'] = amount
-        exchange.create_market_sell_order(symbol=symbol, amount=amount)
+        order = exchange.create_market_sell_order(symbol=symbol, amount=amount)
 
-    return position['type'], position['amount']
+    if order:
+        return position['type'], position['amount'], order['info']['orderId']
+
+    return position['type'], position['amount'], order
 
 def exit_position(exchange, symbol, position):
+    order = None
     amount = position['amount']
     if position['type'] == 'long':
-        exchange.create_market_sell_order(symbol=symbol, amount=amount)
+        order = exchange.create_market_sell_order(symbol=symbol, amount=amount)
     elif position['type'] == 'short':
-        exchange.create_market_buy_order(symbol=symbol, amount=amount)
+        order = exchange.create_market_buy_order(symbol=symbol, amount=amount)
+
+    if order:
+        return order['info']['orderId']
+
+    return order
+
+def add_record_log(order_id, binance, symbol):
+    db = MariaDB()
+    record = binance.fetch_order(order_id, symbol)['info']
+    avg_price = float(record['avgPrice'])
+    executed_qty = float(record['executedQty'])
+    side = record['side']
+    status = record['status']
+    _type = record['type']
+    symbol = record['symbol']
+    time = datetime.fromtimestamp(int(record['time']) / 1000)
+    fee = float(record['cumQuote']) * 0.0004
+    cum_quote = float(record['cumQuote'])
+
+    with db.conn.cursor() as curs:
+        sql = """
+                INSERT INTO trading_bot_tradingrecord (avg_price, executed_qty, fee, cum_quote, side, status, type, symbol, datetime) 
+                     VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}
+                     """.format(avg_price, executed_qty, fee, cum_quote, side, status, _type, symbol) + f", '{time}')"
+
+        curs.execute(sql)
+        db.conn.commit()
+
