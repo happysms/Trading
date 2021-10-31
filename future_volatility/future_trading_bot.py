@@ -54,12 +54,14 @@ while True:
 
         # position 종료
         if now.hour == 8 and now.minute == 50 and (20 <= now.second < 30):
-            if op_mode and position['type'] is not None:
+            if op_mode:
                 order_id = util.exit_position(binance, symbol, position)
                 op_mode = False
                 position['type'] = None
                 time.sleep(10)
-                util.add_record_log(order_id, binance, symbol)
+
+                if order_id:
+                    util.add_record_log(order_id, binance, symbol, position['type'])
 
         # 목표가 갱신
         if now.hour == 9 and now.minute == 0 and (20 <= now.second < 30):
@@ -76,11 +78,13 @@ while True:
         amount = util.cal_amount(usdt, cur_price, 0.99)
 
         if op_mode and position['type'] is None:
-            position['type'], invest_amount, order_id = util.enter_position(binance, symbol, cur_price, long_target, short_target, amount, position, ma20_condition, before_day_condition)
+            position['type'], invest_amount, order_id = util.enter_position(binance, symbol, cur_price, long_target, short_target,
+                                                                            amount, position, ma20_condition, before_day_condition)
+
             if position['type']:
                 logger.info(f"{position['type']}포지션 진입, 투자금 {invest_amount}")
                 time.sleep(10)
-                util.add_record_log(order_id, binance, symbol)
+                util.add_record_log(order_id, binance, symbol, position['type'])
 
         time.sleep(1)
         logger.info(("long 목표가: ", long_target, "\nshort 목표가: ", short_target))

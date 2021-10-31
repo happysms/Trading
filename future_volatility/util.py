@@ -71,7 +71,7 @@ def exit_position(exchange, symbol, position):
 
     return order
 
-def add_record_log(order_id, binance, symbol):
+def add_record_log(order_id, binance, symbol, position_type):
     db = MariaDB()
     record = binance.fetch_order(order_id, symbol)['info']
     avg_price = float(record['avgPrice'])
@@ -84,11 +84,39 @@ def add_record_log(order_id, binance, symbol):
     fee = float(record['cumQuote']) * 0.0004
     cum_quote = float(record['cumQuote'])
 
+    long_target, short_target, is_rise, before_day_condition = cal_target(binance, symbol)
+    trade_diff = None
+    target = 0
+
+    if position_type:
+        if side.lower() == "buy":
+            trade_diff_rate = round(((((avg_price / long_target)) - 1) * 100), 2)
+            target = long_target
+        else:
+            trade_diff_rate = round(((((avg_price / short_target)) - 1) * 100), 2)
+            target = short_target
+    else:
+        data = binance.fetch_ohlcv(
+            symbol=symbol,
+            timeframe='1d',
+            since=None,
+            limit=1
+        )
+        df = pd.DataFrame(
+            data=data,
+            columns=['datetime', 'open', 'high', 'low', 'close', 'volume']
+        )
+        current_price = df.iloc[-1]['close']
+        target = current_price
+        trade_diff_rate = round(((((avg_price / current_price)) - 1) * 100), 2)
+
     with db.conn.cursor() as curs:
         sql = """
-                INSERT INTO trading_bot_tradingrecord (avg_price, executed_qty, fee, cum_quote, side, status, type, symbol, datetime) 
-                     VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}
-                     """.format(avg_price, executed_qty, fee, cum_quote, side, status, _type, symbol) + f", '{time}')"
+                INSERT INTO trading_bot_tradingrecord (avg_price, executed_qty, fee, cum_quote, side, 
+                            status, type, symbol, datetime, trade_diff_rate, target_price) 
+                            VALUES ({}, {}, {}, {}, '{}', '{}', '{}', '{}', '{}', {}, {})
+                            """.format(avg_price, executed_qty, fee, cum_quote, side,
+                                       status, _type, symbol, time, trade_diff_rate, target)
 
         curs.execute(sql)
         db.conn.commit()
